@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Companion - Video Call</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #1a1a2e;
+            color: #ffffff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            padding: 12px 24px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 500;
+            color: #e94560;
+        }
+
+        .status {
+            padding: 6px 14px;
+            background: rgba(233, 69, 96, 0.2);
+            border: 1px solid #e94560;
+            color: #e94560;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Main panels container */
+        .main-content {
+            flex: 1;
+            display: flex;
+            padding: 16px;
+            gap: 16px;
+            min-height: 0;
+        }
+
+        .panel {
+            background: #0f0f23;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #16213e;
+            min-width: 0;
+        }
+
+        #webcamPanel, #avatarPanel {
+            flex: 1 1 0%;
+            min-width: 0;
+            height: 100%;
+            width: 50%;
+            max-width: 50%;
+            aspect-ratio: 568 / 278;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            background: #0f0f23;
+        }
+
+        .panel-label {
+            position: absolute;
+            top: 12px;
+            left: 16px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            z-index: 10;
+        }
+
+        /* Webcam video */
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+
+        #avatarVideo, #avatarIdle {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center center;
+            display: block;
+            border: none;
+            outline: none;
+            background: #0f0f23;
+        }
+
+        #avatarVideo {
+            display: none;
+        }
+
+        /* Captions area */
+        .captions-container {
+            flex-shrink: 0;
+            padding: 0 16px 16px 16px;
+        }
+
+        .captions {
+            background: rgba(0, 0, 0, 0.85);
+            border-radius: 12px;
+            padding: 16px 20px;
+            min-height: 90px;
+            max-height: 180px;
+            overflow-y: auto;
+            border: 1px solid #16213e;
+        }
+
+        .caption-line {
+            margin-bottom: 8px;
+            line-height: 1.6;
+            font-size: 17px;
+        }
+
+        .caption-line:last-child {
+            margin-bottom: 0;
+        }
+
+        .caption-label {
+            font-weight: 600;
+            color: #e94560;
+        }
+
+        .caption-text {
+            color: #ffffff;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+            .caption-line {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI Companion Video Call</h1>
+        <div class="status" id="statusIndicator">Listening...</div>
+    </div>
+
+    <div class="main-content">
+        <div class="panel" id="webcamPanel">
+            <span class="panel-label">You</span>
+            <video id="webcam" autoplay playsinline muted></video>
+        </div>
+
+        <div class="panel" id="avatarPanel">
+            <span class="panel-label">AI Companion</span>
+            <img id="avatarIdle" src="/static/idle.jpg" alt="AI Avatar Idle">
+            <video id="avatarVideo" playsinline muted>
+                <source src="/static/loop_video.mp4" type="video/mp4">
+            </video>
+        </div>
+    </div>
+
+    <div class="captions-container">
+        <div class="captions" id="captions">
+            <div class="caption-line">
+                <span class="caption-label">You said:</span>
+                <span class="caption-text" id="userText">--</span>
+            </div>
+            <div class="caption-line">
+                <span class="caption-label">AI:</span>
+                <span class="caption-text" id="aiText">Waiting for conversation...</span>
+            </div>
+        </div>
+    </div>
+
+    <audio id="ttsAudio"></audio>
+
+    <div id="startOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(26,26,46,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000;">
+        <h2 style="color: #e94560; margin-bottom: 20px;">AI Companion Video Call</h2>
+        <button id="startBtn" style="padding: 16px 32px; font-size: 18px; background: #e94560; color: white; border: none; border-radius: 8px; cursor: pointer;">Start Conversation</button>
+        <p style="margin-top: 16px; color: #aaa; font-size: 14px;">Click to enable microphone and audio playback</p>
+    </div>
+
+    <script>
+        const webcam = document.getElementById('webcam');
+        const avatarVideo = document.getElementById('avatarVideo');
+        const avatarIdle = document.getElementById('avatarIdle');
+        const ttsAudio = document.getElementById('ttsAudio');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const userText = document.getElementById('userText');
+        const aiText = document.getElementById('aiText');
+
+        let currentState = 'listening';
+
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false
+                });
+                webcam.srcObject = stream;
+            } catch (err) {
+                console.error('Webcam error:', err);
+                userText.textContent = 'Could not access webcam.';
+            }
+        }
+
+        function showAvatarTalking() {
+            console.log('[showAvatarTalking] Called');
+            avatarIdle.style.display = 'none';
+            avatarVideo.style.display = 'block';
+            avatarVideo.currentTime = 0;
+            avatarVideo.play().then(() => {
+                console.log('[showAvatarTalking] avatarVideo.play() succeeded');
+            }).catch(err => {
+                if (err.name !== 'AbortError') {
+                    console.error('[showAvatarTalking] avatarVideo.play() FAILED:', err.name, err.message, err);
+                } else {
+                    console.log('[showAvatarTalking] avatarVideo.play() aborted (rapid state change)');
+                }
+            });
+        }
+
+        function showAvatarIdle() {
+            console.log('[showAvatarIdle] Called');
+            avatarVideo.pause();
+            avatarVideo.currentTime = 0;
+            avatarVideo.style.display = 'none';
+            avatarIdle.style.display = 'block';
+        }
+
+        avatarVideo.addEventListener('ended', () => {
+            console.log('[avatarVideo ended] event fired');
+            // Keep looping the avatar video for as long as the TTS audio is still playing
+            if (!ttsAudio.paused) {
+                console.log('[avatarVideo ended] Audio still playing, restarting video');
+                avatarVideo.currentTime = 0;
+                avatarVideo.play().catch(err => console.error('[avatarVideo ended] loop play() FAILED:', err.name, err.message, err));
+            }
+        });
+
+        function updateCaptions(user, ai) {
+            userText.textContent = user || '--';
+            aiText.textContent = ai || 'Waiting for conversation...';
+        }
+
+        function playAudio(url) {
+            // Simplest possible playback: reuse the single audio element, stop any
+            // previous playback, set the new URL, and play. This was the original
+            // approach that produced smooth audio without pitch issues.
+            ttsAudio.pause();
+            ttsAudio.currentTime = 0;
+            ttsAudio.src = url;
+            ttsAudio.play().then(() => {
+                statusIndicator.textContent = 'Speaking...';
+            }).catch(err => {
+                console.error('Audio play() blocked or failed:', err.name, err.message, err);
+                showAvatarIdle();
+                statusIndicator.textContent = 'Listening...';
+            });
+        }
+
+        ttsAudio.addEventListener('ended', () => {
+            console.log('[ttsAudio ended] Audio finished, notifying backend');
+            fetch('/audio_finished', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            }).then(resp => {
+                console.log('[ttsAudio ended] /audio_finished response:', resp.status);
+            }).catch(err => {
+                console.error('[ttsAudio ended] /audio_finished fetch failed:', err);
+            }).finally(() => {
+                showAvatarIdle();
+                statusIndicator.textContent = 'Listening...';
+            });
+        });
+
+        function connectEvents() {
+            const evtSource = new EventSource('/events');
+            console.log('SSE connection opened');
+            evtSource.onopen = function() {
+                console.log('SSE connection established');
+            };
+            evtSource.onmessage = function(event) {
+                console.log('SSE message received:', event.data);
+                const msg = JSON.parse(event.data);
+                if (msg.state === 'keepalive') return;
+
+                updateCaptions(msg.user_text || '--', msg.ai_text || 'Waiting for conversation...');
+                statusIndicator.textContent = msg.state === 'speaking' ? 'Speaking...' : (msg.state === 'thinking' ? 'Thinking...' : 'Listening...');
+
+                if (msg.state === 'speaking' && msg.audio_url) {
+                    console.log('[SSE speaking] Received speaking state, calling showAvatarTalking. URL:', msg.audio_url);
+                    currentState = 'speaking';
+                    showAvatarTalking();
+                    playAudio(msg.audio_url);
+                } else if (msg.state === 'thinking' || msg.state === 'listening') {
+                    if (currentState !== 'speaking') {
+                        console.log('[SSE state] state=' + msg.state + ' but currentState already ' + currentState + ', skipping showAvatarIdle');
+                    } else {
+                        currentState = msg.state;
+                        showAvatarIdle();
+                    }
+                } else {
+                    currentState = msg.state;
+                }
+            };
+            evtSource.onerror = function(err) {
+                console.error('SSE error:', err);
+                statusIndicator.textContent = 'Connection error';
+            };
+        }
+
+        async function startConversation() {
+            try {
+                // Unlock browser autoplay with a real silent audio file
+                ttsAudio.muted = true;
+                ttsAudio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAAAAAA==\n'; // 1-frame silent WAV
+                const silentPlay = ttsAudio.play().catch(err => console.log('Silent unlock play caught (expected ok):', err && err.message));
+                await silentPlay;
+                ttsAudio.muted = false;
+                ttsAudio.pause();
+                ttsAudio.currentTime = 0;
+                ttsAudio.src = '';
+
+                await startWebcam();
+                document.getElementById('startOverlay').style.display = 'none';
+                showAvatarIdle();
+                connectEvents();
+            } catch (err) {
+                console.error('Start conversation error:', err);
+            }
+        }
+
+        document.getElementById('startBtn').addEventListener('click', startConversation);
+    </script>
+</body>
+</html>
